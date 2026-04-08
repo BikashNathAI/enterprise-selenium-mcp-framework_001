@@ -1,0 +1,6 @@
+Starting browser: chrome
+WebDriver Manager failed: [WinError 4551] An Application Control policy has blocked this file
+Trying Selenium built-in manager...
+Chrome started successfully!
+Page title: Google
+Browser closed.

@@ -1,0 +1,16 @@
+{
+  "valid_user": {
+    "email": "testuser@example.com",
+    "password": "Test@1234",
+    "role": "customer"
+  },
+  "admin_user": {
+    "email": "admin@example.com",
+    "password": "Admin@5678",
+    "role": "admin"
+  },
+  "invalid_user": {
+    "email": "notexist@example.com",
+    "password": "wrongpassword"
+  }
+}

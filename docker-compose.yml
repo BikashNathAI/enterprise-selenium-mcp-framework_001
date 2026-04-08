@@ -1,0 +1,77 @@
+version: "3.8"
+
+services:
+
+  # ── Selenium Hub ──────────────────────────────────────────
+  selenium-hub:
+    image: selenium/hub:4.21.0
+    container_name: selenium-hub
+    ports:
+      - "4442:4442"
+      - "4443:4443"
+      - "4444:4444"
+
+  # ── Chrome Node ───────────────────────────────────────────
+  chrome:
+    image: selenium/node-chrome:4.21.0
+    container_name: chrome-node
+    shm_size: 2gb
+    depends_on:
+      - selenium-hub
+    environment:
+      - SE_EVENT_BUS_HOST=selenium-hub
+      - SE_EVENT_BUS_PUBLISH_PORT=4442
+      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+      - SE_NODE_MAX_SESSIONS=3
+    ports:
+      - "7900:7900"
+
+  # ── Firefox Node ──────────────────────────────────────────
+  firefox:
+    image: selenium/node-firefox:4.21.0
+    container_name: firefox-node
+    shm_size: 2gb
+    depends_on:
+      - selenium-hub
+    environment:
+      - SE_EVENT_BUS_HOST=selenium-hub
+      - SE_EVENT_BUS_PUBLISH_PORT=4442
+      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+
+  # ── Test Runner ───────────────────────────────────────────
+  test-runner:
+    build: .
+    container_name: test-runner
+    depends_on:
+      - selenium-hub
+      - chrome
+    environment:
+      - SELENIUM_GRID_URL=http://selenium-hub:4444/wd/hub
+      - HEADLESS=true
+      - BASE_URL=https://www.google.com
+      - BROWSER=chrome
+      - OLLAMA_ENABLED=false
+    volumes:
+      - ./reports:/app/reports
+      - ./screenshots:/app/screenshots
+    command: >
+      pytest tests/api/ tests/ui/test_login.py
+      -v --html=reports/test-report.html
+      --self-contained-html
+
+  # ── Ollama AI Service ─────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama-service
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+
+volumes:
+  ollama_data:

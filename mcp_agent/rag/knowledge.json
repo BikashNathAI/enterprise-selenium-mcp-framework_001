@@ -1,0 +1,92 @@
+[
+  {
+    "id": "page_base_page",
+    "content": "from selenium.webdriver.common.by import By\nfrom selenium.webdriver.common.action_chains import ActionChains\nfrom selenium.webdriver.support.select import Select\nfrom utils.wait_utils import WaitUtils\nfrom utils.screenshot_utils import ScreenshotUtils\nfrom config.config import config\n\n\nclass BasePage:\n\n    def __init__(self, driver):\n        self.driver     = driver\n        self.wait       = WaitUtils(driver)\n        self.screenshot = ScreenshotUtils(driver)\n        self.base_url   = config.BASE_URL\n\n    def open(self, path: str = \"\") -> \"BasePage\":\n        url = f\"{self.base_url}/{path}\".rstrip(\"/\")\n        self.driver.get(url)\n        self.wait.wait_for_page_load()\n        print(f\"Opened: {url}\")\n        return self\n\n    def find(self, locator: tuple):\n        return self.wait.wait_for_element_visible(locator)\n\n    def click(self, locator: tuple) -> \"BasePage\":\n        element = self.wait.wait_for_element_clickable(locator)\n        element.click()\n        print(f\"Clicked: {locator}\")\n        return self\n\n    def type_text(self, locator: tuple, text: str) -> \"BasePage\":\n        element = self.find(locator)\n        element.clear()\n        element.send_keys(text)\n        print(f\"Typed '{text}' into {locator}\")\n        return self\n\n    def get_text(self, locator: tuple) -> str:\n        return self.find(locator).text\n\n    def is_visible(self, locator: tuple) -> bool:\n        try:\n            return self.find(locator).is_displayed()\n        except Exception:\n            return False\n\n    def get_current_url(self) -> str:\n        return self.driver.current_url\n\n    def get_title(self) -> str:\n        return self.driver.title\n\n    def scroll_to(self, locator: tuple) -> \"BasePage\":\n        element = self.find(locator)\n        self.driver.execute_script(\n            \"arguments[0].scrollIntoView(true);\", element\n        )\n        return self\n\n    def js_click(self, locator: tuple) -> \"BasePage\":\n        element = self.find(locator)\n        self.driver.execute_script(\"argumen",
+    "metadata": {
+      "type": "page_object",
+      "filename": "base_page.py",
+      "module": "base_page"
+    }
+  },
+  {
+    "id": "page_login_page",
+    "content": "from selenium.webdriver.common.by import By\nfrom pages.base_page import BasePage\n\n\nclass LoginPage(BasePage):\n\n    # Locators\n    EMAIL_INPUT      = (By.ID, \"email\")\n    PASSWORD_INPUT   = (By.ID, \"password\")\n    LOGIN_BUTTON     = (By.CSS_SELECTOR, \"button[type='submit']\")\n    ERROR_MESSAGE    = (By.CSS_SELECTOR, \".error-message\")\n    DASHBOARD_HEADER = (By.CSS_SELECTOR, \"h1.dashboard-title\")\n\n    PATH = \"login\"\n\n    def open_login(self) -> \"LoginPage\":\n        self.open(self.PATH)\n        return self\n\n    def enter_email(self, email: str) -> \"LoginPage\":\n        self.type_text(self.EMAIL_INPUT, email)\n        return self\n\n    def enter_password(self, password: str) -> \"LoginPage\":\n        self.type_text(self.PASSWORD_INPUT, password)\n        return self\n\n    def click_login(self) -> \"LoginPage\":\n        self.click(self.LOGIN_BUTTON)\n        return self\n\n    def login(self, email: str, password: str) -> \"LoginPage\":\n        return (\n            self.open_login()\n                .enter_email(email)\n                .enter_password(password)\n                .click_login()\n        )\n\n    def get_error_message(self) -> str:\n        return self.get_text(self.ERROR_MESSAGE)\n\n    def is_login_error_visible(self) -> bool:\n        return self.is_visible(self.ERROR_MESSAGE)\n\n    def is_dashboard_visible(self) -> bool:\n        return self.is_visible(self.DASHBOARD_HEADER)",
+    "metadata": {
+      "type": "page_object",
+      "filename": "login_page.py",
+      "module": "login_page"
+    }
+  },
+  {
+    "id": "test_test_api",
+    "content": "import pytest\nimport requests\n\n\nclass TestPublicAPI:\n    \"\"\"\n    Tests against JSONPlaceholder \u2014 a free public REST API.\n    Perfect for learning API testing. No credentials needed.\n    URL: https://jsonplaceholder.typicode.com\n    \"\"\"\n\n    BASE = \"https://jsonplaceholder.typicode.com\"\n\n    # \u2500\u2500 GET Tests \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n    @pytest.mark.smoke\n    @pytest.mark.api\n    def test_get_all_users(self):\n        response = requests.get(f\"{self.BASE}/users\")\n        print(f\"Status: {response.status_code}\")\n        assert response.status_code == 200\n        users = response.json()\n        assert len(users) == 10\n        print(f\"Got {len(users)} users!\")\n\n    @pytest.mark.smoke\n    @pytest.mark.api\n    def test_get_single_user(self):\n        response = requests.get(f\"{self.BASE}/users/1\")\n        assert response.status_code == 200\n        user = response.json()\n        assert user[\"id\"] == 1\n        assert \"name\" in user\n        assert \"email\" in user\n        print(f\"User: {user['name']} - {user['email']}\")\n\n    @pytest.mark.api\n    def test_get_user_not_found(self):\n        response = requests.get(f\"{self.BASE}/users/9999\")\n        assert response.status_code == 404\n        print(\"404 returned correctly for missing user!\")\n\n    @pytest.mark.api\n    def test_get_all_posts(self):\n        response = requests.get(f\"{self.BASE}/posts\")\n        assert response.status_code == 200\n        posts = response.json()\n        assert len(posts) == 100\n        print(f\"Got {len(posts)} posts!\")\n\n    @pytest.mark.api\n    def test_get_single_post(self):\n        response = requests.get(f\"{self.BASE}/posts/1\")\n        assert response.status_code == 200\n        post = response.json()\n        assert post[\"id\"] == 1\n        assert \"title\" in post\n        assert \"body\" in post\n        print(f\"Post title: {post['title'][:40]}...\")\n\n    # \u2500\u2500 POST Tests \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n    @pytest.mark.smoke\n    @pytest.mark.ap",
+    "metadata": {
+      "type": "existing_test",
+      "filename": "test_api.py",
+      "module": "test_api"
+    }
+  },
+  {
+    "id": "test_test_bdd_google",
+    "content": "import pytest\nfrom pytest_bdd import scenarios\nfrom steps.google_search_steps import *\n\nscenarios(\"../../features/google_search.feature\")",
+    "metadata": {
+      "type": "existing_test",
+      "filename": "test_bdd_google.py",
+      "module": "test_bdd_google"
+    }
+  },
+  {
+    "id": "test_test_data_driven",
+    "content": "import pytest\nimport openpyxl\nimport json\nfrom pathlib import Path\nfrom selenium.webdriver.common.by import By\nfrom selenium.webdriver.common.keys import Keys\nfrom utils.wait_utils import WaitUtils\nfrom data.data_factory import DataFactory\n\n\ndef get_excel_data():\n    \"\"\"Read test data from Excel file.\"\"\"\n    path = Path(\"data/excel/search_data.xlsx\")\n    wb   = openpyxl.load_workbook(path)\n    ws   = wb.active\n    rows = []\n    for row in ws.iter_rows(min_row=2, values_only=True):\n        if row[0]:\n            rows.append(row)\n    return rows\n\n\ndef get_json_data():\n    \"\"\"Read test data from JSON file.\"\"\"\n    return DataFactory.get_json(\"users\")\n\n\nclass TestDataDriven:\n\n    # \u2500\u2500 Excel Data Driven \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n    @pytest.mark.ui\n    @pytest.mark.parametrize(\"topic,expected\",\n                             get_excel_data())\n    def test_search_from_excel(self, driver, topic, expected):\n        \"\"\"\n        Data comes from Excel file.\n        Each row in Excel = one test case.\n        \"\"\"\n        print(f\"\\nTesting search: {topic}\")\n        driver.get(\"https://www.google.com\")\n        wait   = WaitUtils(driver)\n        search = wait.wait_for_element_visible(\n            (By.NAME, \"q\")\n        )\n        search.clear()\n        search.send_keys(topic)\n        search.send_keys(Keys.RETURN)\n        wait.wait_for_url_contains(expected)\n        assert expected in driver.current_url\n        print(f\"PASS: '{topic}' search worked!\")\n\n    # \u2500\u2500 JSON Data Driven \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n    @pytest.mark.ui\n    def test_json_fixture_loads(self, driver):\n        \"\"\"Verify JSON test data loads correctly.\"\"\"\n        users = get_json_data()\n        assert \"valid_user\" in users\n        assert \"admin_user\" in users\n        assert \"invalid_user\" in users\n        assert \"@\" in users[\"valid_user\"][\"email\"]\n        print(f\"JSON data loaded: {users['valid_user']['email']}\")\n\n    # \u2500\u2500 Faker Data Driven \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+    "metadata": {
+      "type": "existing_test",
+      "filename": "test_data_driven.py",
+      "module": "test_data_driven"
+    }
+  },
+  {
+    "id": "test_test_google",
+    "content": "",
+    "metadata": {
+      "type": "existing_test",
+      "filename": "test_google.py",
+      "module": "test_google"
+    }
+  },
+  {
+    "id": "test_test_login",
+    "content": "import pytest\nfrom pages.login_page import LoginPage\nfrom data.data_factory import DataFactory\n\n\nclass TestLogin:\n\n    @pytest.mark.smoke\n    @pytest.mark.ui\n    def test_google_opens(self, driver):\n        \"\"\"\n        Simple smoke test \u2014 opens Google and checks title.\n        Works without any login credentials.\n        \"\"\"\n        driver.get(\"https://www.google.com\")\n        title = driver.title\n        print(f\"Page title: {title}\")\n        assert \"Google\" in title, f\"Expected Google in title, got: {title}\"\n\n    @pytest.mark.smoke\n    @pytest.mark.ui\n    def test_google_search_box_visible(self, driver):\n        \"\"\"\n        Check Google search input is visible.\n        \"\"\"\n        from selenium.webdriver.common.by import By\n        from utils.wait_utils import WaitUtils\n\n        driver.get(\"https://www.google.com\")\n        wait    = WaitUtils(driver)\n        search  = wait.wait_for_element_visible(\n            (By.NAME, \"q\")\n        )\n        assert search.is_displayed(), \"Search box should be visible\"\n        print(\"Google search box is visible!\")\n\n    @pytest.mark.smoke\n    @pytest.mark.ui\n    def test_google_search_works(self, driver):\n        \"\"\"\n        Type in Google search and verify results page loads.\n        \"\"\"\n        from selenium.webdriver.common.by import By\n        from selenium.webdriver.common.keys import Keys\n        from utils.wait_utils import WaitUtils\n\n        driver.get(\"https://www.google.com\")\n        wait   = WaitUtils(driver)\n        search = wait.wait_for_element_visible((By.NAME, \"q\"))\n        search.clear()\n        search.send_keys(\"Selenium automation\")\n        search.send_keys(Keys.RETURN)\n        wait.wait_for_url_contains(\"search\")\n        assert \"search\" in driver.current_url\n        print(\"Search worked! URL:\", driver.current_url)\n\n    @pytest.mark.regression\n    @pytest.mark.ui\n    def test_faker_generates_user(self, driver):\n        \"\"\"\n        Verify DataFactory generates valid user data.\n        Does not need a browser \u2014 jus",
+    "metadata": {
+      "type": "existing_test",
+      "filename": "test_login.py",
+      "module": "test_login"
+    }
+  },
+  {
+    "id": "feature_generated",
+    "content": "Feature: AI Generated Test Cases\n\n  Scenario: Valid login test\n    Given app is open When I login Then I see dashboard\n\n  Scenario: Invalid username test\n    Given app is open When I enter invalid credentials Then I get error message\n\n  Scenario: Empty password test\n    Given app is open When I enter valid username and empty password Then I get error message\n\n",
+    "metadata": {
+      "type": "gherkin_feature",
+      "filename": "generated.feature",
+      "module": "generated"
+    }
+  },
+  {
+    "id": "feature_google_search",
+    "content": "@ui @smoke\nFeature: Google Search\n  As a user\n  I want to search on Google\n  So that I can find information\n\n  Background:\n    Given the browser is open on Google\n\n  @positive\n  Scenario: Search for a topic and see results\n    When the user types \"Selenium automation\" in search box\n    And the user presses Enter\n    Then the results page should load\n    And the URL should contain \"search\"\n\n  @positive\n  Scenario: Google homepage has search box\n    Then the search box should be visible\n    And the page title should contain \"Google\"\n\n  @data-driven\n  Scenario Outline: Search for different topics\n    When the user types \"<topic>\" in search box\n    And the user presses Enter\n    Then the results page should load\n\n    Examples:\n      | topic              |\n      | Python testing     |\n      | Selenium WebDriver |\n      | pytest framework   |",
+    "metadata": {
+      "type": "gherkin_feature",
+      "filename": "google_search.feature",
+      "module": "google_search"
+    }
+  },
+  {
+    "id": "step_google_search_steps",
+    "content": "import pytest\nfrom pytest_bdd import given, when, then, parsers, scenarios\nfrom selenium.webdriver.common.by import By\nfrom selenium.webdriver.common.keys import Keys\nfrom utils.wait_utils import WaitUtils\n\nscenarios(\"../features/google_search.feature\")\n\nSEARCH_BOX = (By.NAME, \"q\")\nRESULTS    = (By.ID, \"search\")\n\n\n@given(\"the browser is open on Google\")\ndef open_google(driver):\n    driver.get(\"https://www.google.com\")\n    wait = WaitUtils(driver)\n    wait.wait_for_page_load()\n    print(\"Google opened!\")\n\n\n@when(parsers.parse('the user types \"{text}\" in search box'))\ndef type_in_search(driver, text):\n    wait    = WaitUtils(driver)\n    search  = wait.wait_for_element_visible(SEARCH_BOX)\n    search.clear()\n    search.send_keys(text)\n    print(f\"Typed: {text}\")\n\n\n@when(\"the user presses Enter\")\ndef press_enter(driver):\n    wait   = WaitUtils(driver)\n    search = wait.wait_for_element_visible(SEARCH_BOX)\n    search.send_keys(Keys.RETURN)\n    print(\"Pressed Enter\")\n\n\n@then(\"the results page should load\")\ndef results_page_loads(driver):\n    wait = WaitUtils(driver)\n    wait.wait_for_url_contains(\"search\")\n    assert \"search\" in driver.current_url\n    print(f\"Results loaded: {driver.current_url}\")\n\n\n@then(parsers.parse('the URL should contain \"{text}\"'))\ndef url_contains(driver, text):\n    assert text in driver.current_url, \\\n        f\"Expected '{text}' in URL: {driver.current_url}\"\n    print(f\"URL contains '{text}' - OK\")\n\n\n@then(\"the search box should be visible\")\ndef search_box_visible(driver):\n    wait   = WaitUtils(driver)\n    search = wait.wait_for_element_visible(SEARCH_BOX)\n    assert search.is_displayed()\n    print(\"Search box is visible!\")\n\n\n@then(parsers.parse('the page title should contain \"{text}\"'))\ndef title_contains(driver, text):\n    assert text in driver.title, \\\n        f\"Expected '{text}' in title: {driver.title}\"\n    print(f\"Title contains '{text}' - OK\")",
+    "metadata": {
+      "type": "step_definitions",
+      "filename": "google_search_steps.py",
+      "module": "google_search_steps"
+    }
+  }
+]

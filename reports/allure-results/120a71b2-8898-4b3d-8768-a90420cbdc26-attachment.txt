@@ -1,0 +1,7 @@
+Starting browser: chrome
+WebDriver Manager failed: [WinError 4551] An Application Control policy has blocked this file
+Trying Selenium built-in manager...
+Chrome started successfully!
+Generated: Scott - tammydavila@example.org
+DataFactory working perfectly!
+Browser closed.

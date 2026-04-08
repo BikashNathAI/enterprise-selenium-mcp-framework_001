@@ -1,0 +1,6 @@
+Starting browser: chrome
+WebDriver Manager failed: [WinError 4551] An Application Control policy has blocked this file
+Trying Selenium built-in manager...
+Chrome started successfully!
+Search worked! URL: https://www.google.com/search?q=Selenium+automation&sca_esv=c6b7077b8ab86951&source=hp&ei=1SvOadTgNLK45OUPvfWCoA0&iflsig=AFdpzrgAAAAAac455TxUg2UmWiRBf3TLCSKzrgaX5PAt&ved=0ahUKEwiUn4Dj4s6TAxUyHLkGHb26ANQQ4dUDCBY&uact=5&oq=Selenium+automation&gs_lp=Egdnd3Mtd2l6IhNTZWxlbml1bSBhdXRvbWF0aW9uSFlQAFgscAB4AJABAJgBAKABAKoBALgBA8gBAPgBAZgCAKACAJgDAJIHAKAHALIHALgHAMIHAMgHAIAIAA&sclient=gws-wiz&sei=1yvOadSIC_ao4-EPkY2AqAU
+Browser closed.

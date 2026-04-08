@@ -1,0 +1,99 @@
+name: Enterprise Selenium MCP Framework CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 8 * * *'
+
+jobs:
+
+  # ── API Tests (fast, no browser needed) ──────────────────
+  api-tests:
+    name: API Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install requests jsonschema pydantic faker pytest pytest-html loguru python-dotenv PyYAML
+
+      - name: Run API tests
+        run: |
+          pytest tests/api/ -v --html=reports/api-report.html --self-contained-html
+
+      - name: Upload API report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-test-report
+          path: reports/api-report.html
+
+  # ── UI Tests with Selenium Grid ───────────────────────────
+  ui-tests:
+    name: UI Tests
+    runs-on: ubuntu-latest
+    needs: api-tests
+
+    services:
+      selenium-hub:
+        image: selenium/hub:4.21.0
+        ports:
+          - 4444:4444
+      chrome:
+        image: selenium/node-chrome:4.21.0
+        env:
+          SE_EVENT_BUS_HOST: selenium-hub
+          SE_EVENT_BUS_PUBLISH_PORT: 4442
+          SE_EVENT_BUS_SUBSCRIBE_PORT: 4443
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install selenium webdriver-manager pytest pytest-bdd pytest-html faker python-dotenv PyYAML loguru openpyxl requests jsonschema pydantic
+
+      - name: Run UI smoke tests
+        env:
+          SELENIUM_GRID_URL: http://localhost:4444/wd/hub
+          HEADLESS: true
+          BASE_URL: https://www.google.com
+        run: |
+          pytest tests/ui/test_login.py -m smoke -v --html=reports/ui-report.html --self-contained-html
+
+      - name: Upload UI report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-test-report
+          path: reports/ui-report.html
+
+  # ── Full Report Summary ───────────────────────────────────
+  report:
+    name: Generate Report
+    runs-on: ubuntu-latest
+    needs: [api-tests, ui-tests]
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download all reports
+        uses: actions/download-artifact@v4
+      - name: Summary
+        run: |
+          echo "## Test Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "API Tests: Completed" >> $GITHUB_STEP_SUMMARY
+          echo "UI Tests: Completed" >> $GITHUB_STEP_SUMMARY
