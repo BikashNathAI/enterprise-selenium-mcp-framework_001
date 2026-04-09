@@ -1,0 +1,31 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+
+# Environment
+.env
+
+# Reports (generated files)
+reports/allure-results/
+reports/test-report.html
+
+# Screenshots (generated)
+screenshots/
+
+# Logs
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# Allure
+allure/
+allure.zip
