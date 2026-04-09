@@ -8,7 +8,6 @@ on:
 
 jobs:
 
-  # ── API Tests — runs in 30 seconds, no browser needed ────
   api-tests:
     name: API Tests
     runs-on: ubuntu-latest
@@ -25,40 +24,35 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pytest-html requests faker loguru python-dotenv PyYAML jsonschema pydantic
+          pip install pytest pytest-html requests faker loguru python-dotenv PyYAML jsonschema pydantic openpyxl
 
-      - name: Create reports folder
-        run: mkdir -p reports
-
-      - name: Run API tests
+      - name: Create required folders
         run: |
-          pytest tests/api/test_api.py -v --html=reports/api-report.html --self-contained-html
+          mkdir -p reports
+          mkdir -p screenshots
+          mkdir -p logs
+          mkdir -p data/excel
+          mkdir -p data/json
 
-      - name: Upload API report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: api-test-report
-          path: reports/api-report.html
-
-  # ── Data Validation Tests — no browser needed ─────────────
-  data-tests:
-    name: Data + Config Tests
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
+      - name: Create .env file
         run: |
-          python -m pip install --upgrade pip
-          pip install pytest faker loguru python-dotenv PyYAML openpyxl
+          cat > .env << EOF
+          BROWSER=chrome
+          HEADLESS=true
+          IMPLICIT_WAIT=10
+          EXPLICIT_WAIT=20
+          BASE_URL=https://www.google.com
+          ANTHROPIC_API_KEY=
+          MCP_ENABLED=false
+          OLLAMA_ENABLED=false
+          OLLAMA_MODEL=llama3.2:1b
+          OLLAMA_URL=http://localhost:11434
+          SELENIUM_GRID_URL=
+          DB_URL=
+          ALLURE_RESULTS_DIR=reports/allure-results
+          SCREENSHOT_ON_FAILURE=false
+          GEMINI_API_KEY=
+          EOF
 
       - name: Create test data
         run: |
@@ -74,7 +68,77 @@ jobs:
           print('Excel created!')
           "
 
-      - name: Verify config loads
+      - name: Create users.json
+        run: |
+          cat > data/json/users.json << EOF
+          {
+            "valid_user": {
+              "email": "testuser@example.com",
+              "password": "Test@1234",
+              "role": "customer"
+            },
+            "admin_user": {
+              "email": "admin@example.com",
+              "password": "Admin@5678",
+              "role": "admin"
+            },
+            "invalid_user": {
+              "email": "notexist@example.com",
+              "password": "wrongpassword"
+            }
+          }
+          EOF
+
+      - name: Run API tests
+        run: |
+          pytest tests/api/test_api.py -v --html=reports/api-report.html --self-contained-html
+
+      - name: Upload API report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-test-report
+          path: reports/api-report.html
+
+  config-tests:
+    name: Config and Data Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install faker loguru python-dotenv PyYAML openpyxl
+
+      - name: Create folders and files
+        run: |
+          mkdir -p reports screenshots logs data/excel data/json
+          cat > .env << EOF
+          BROWSER=chrome
+          HEADLESS=true
+          BASE_URL=https://www.google.com
+          MCP_ENABLED=false
+          OLLAMA_ENABLED=false
+          OLLAMA_MODEL=llama3.2:1b
+          OLLAMA_URL=http://localhost:11434
+          SCREENSHOT_ON_FAILURE=false
+          ANTHROPIC_API_KEY=
+          GEMINI_API_KEY=
+          DB_URL=
+          EOF
+          cat > data/json/users.json << EOF
+          {"valid_user": {"email": "test@example.com", "password": "Test@1234", "role": "customer"}}
+          EOF
+
+      - name: Test config loads
         run: |
           python -c "
           from config.config import config
@@ -82,40 +146,38 @@ jobs:
           print('Config OK!')
           "
 
-      - name: Verify data factory
+      - name: Test data factory
         run: |
           python -c "
           from data.data_factory import DataFactory
           u = DataFactory.generate_user()
-          print('User generated:', u['email'])
           assert '@' in u['email']
+          print('User:', u['email'])
           print('DataFactory OK!')
           "
 
-      - name: Verify MCP agent imports
+      - name: Test MCP planner
         run: |
           python -c "
           from mcp_agent.test_planner import MCPTestPlanner
           p = MCPTestPlanner()
           cases = p.generate_test_cases('login page')
-          print(f'Generated {len(cases)} test cases')
-          print('MCP Agent OK!')
+          assert len(cases) > 0
+          print(f'Generated {len(cases)} cases')
+          print('MCP Planner OK!')
           "
 
-  # ── Summary ───────────────────────────────────────────────
   summary:
-    name: Test Summary
+    name: Summary
     runs-on: ubuntu-latest
-    needs: [api-tests, data-tests]
+    needs: [api-tests, config-tests]
     if: always()
-
     steps:
-      - name: Print summary
+      - name: Results
         run: |
-          echo "## Enterprise Selenium MCP Framework" >> $GITHUB_STEP_SUMMARY
-          echo "| Test Suite | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "| Suite | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
-          echo "| API Tests | Completed |" >> $GITHUB_STEP_SUMMARY
-          echo "| Data Tests | Completed |" >> $GITHUB_STEP_SUMMARY
-          echo "| Config Validation | Completed |" >> $GITHUB_STEP_SUMMARY
-          echo "| MCP Agent | Completed |" >> $GITHUB_STEP_SUMMARY
+          echo "| API Tests | Done |" >> $GITHUB_STEP_SUMMARY
+          echo "| Config Tests | Done |" >> $GITHUB_STEP_SUMMARY
+          echo "| MCP Agent | Done |" >> $GITHUB_STEP_SUMMARY
