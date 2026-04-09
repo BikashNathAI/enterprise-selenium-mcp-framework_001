@@ -19,26 +19,31 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install pytest requests faker python-dotenv PyYAML loguru jsonschema pydantic openpyxl pytest-html
+        run: |
+          pip install pytest requests faker python-dotenv PyYAML \
+            loguru jsonschema pydantic openpyxl pytest-html
 
       - name: Setup environment
         run: |
-          mkdir -p reports screenshots logs data/excel data/json
-          echo "BROWSER=chrome" > .env
-          echo "HEADLESS=true" >> .env
-          echo "BASE_URL=https://www.google.com" >> .env
-          echo "MCP_ENABLED=false" >> .env
-          echo "OLLAMA_ENABLED=false" >> .env
-          echo "OLLAMA_MODEL=llama3.2:1b" >> .env
-          echo "OLLAMA_URL=http://localhost:11434" >> .env
-          echo "SCREENSHOT_ON_FAILURE=false" >> .env
-          echo "ANTHROPIC_API_KEY=" >> .env
-          echo "GEMINI_API_KEY=" >> .env
-          echo "DB_URL=" >> .env
-          echo "SELENIUM_GRID_URL=" >> .env
-          echo "IMPLICIT_WAIT=10" >> .env
-          echo "EXPLICIT_WAIT=20" >> .env
-          echo "ALLURE_RESULTS_DIR=reports/allure-results" >> .env
+          mkdir -p reports screenshots logs data/excel data/json \
+            reports/allure-results
+          cat > .env << 'EOF'
+          BROWSER=chrome
+          HEADLESS=true
+          BASE_URL=https://www.google.com
+          MCP_ENABLED=false
+          OLLAMA_ENABLED=false
+          OLLAMA_MODEL=llama3.2:1b
+          OLLAMA_URL=http://localhost:11434
+          SCREENSHOT_ON_FAILURE=false
+          ANTHROPIC_API_KEY=
+          GEMINI_API_KEY=
+          DB_URL=
+          SELENIUM_GRID_URL=
+          IMPLICIT_WAIT=10
+          EXPLICIT_WAIT=20
+          ALLURE_RESULTS_DIR=reports/allure-results
+          EOF
           echo '{"valid_user":{"email":"test@example.com","password":"Test@1234","role":"customer"},"admin_user":{"email":"admin@example.com","password":"Admin@5678","role":"admin"},"invalid_user":{"email":"bad@example.com","password":"wrong"}}' > data/json/users.json
           python -c "
           import openpyxl
@@ -48,10 +53,15 @@ jobs:
           ws.append(['topic','expected_in_url'])
           ws.append(['Python selenium','search'])
           wb.save('data/excel/search_data.xlsx')
+          print('Excel created!')
           "
 
       - name: Run API tests
-        run: pytest tests/api/test_api.py -v --html=reports/api-report.html --self-contained-html
+        run: |
+          pytest tests/api/test_api.py -v \
+            --html=reports/api-report.html \
+            --self-contained-html \
+            --tb=short
 
       - name: Upload report
         uses: actions/upload-artifact@v4
@@ -72,30 +82,40 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install faker python-dotenv PyYAML loguru openpyxl
+        run: |
+          pip install faker python-dotenv PyYAML loguru openpyxl \
+            pydantic anthropic tenacity
 
       - name: Setup environment
         run: |
-          mkdir -p reports screenshots logs data/excel data/json
-          echo "BROWSER=chrome" > .env
-          echo "HEADLESS=true" >> .env
-          echo "BASE_URL=https://www.google.com" >> .env
-          echo "MCP_ENABLED=false" >> .env
-          echo "OLLAMA_ENABLED=false" >> .env
-          echo "OLLAMA_MODEL=llama3.2:1b" >> .env
-          echo "OLLAMA_URL=http://localhost:11434" >> .env
-          echo "SCREENSHOT_ON_FAILURE=false" >> .env
-          echo "ANTHROPIC_API_KEY=" >> .env
-          echo "GEMINI_API_KEY=" >> .env
-          echo "DB_URL=" >> .env
-          echo "SELENIUM_GRID_URL=" >> .env
-          echo "IMPLICIT_WAIT=10" >> .env
-          echo "EXPLICIT_WAIT=20" >> .env
-          echo "ALLURE_RESULTS_DIR=reports/allure-results" >> .env
+          mkdir -p reports screenshots logs data/excel data/json \
+            reports/allure-results
+          cat > .env << 'EOF'
+          BROWSER=chrome
+          HEADLESS=true
+          BASE_URL=https://www.google.com
+          MCP_ENABLED=false
+          OLLAMA_ENABLED=false
+          OLLAMA_MODEL=llama3.2:1b
+          OLLAMA_URL=http://localhost:11434
+          SCREENSHOT_ON_FAILURE=false
+          ANTHROPIC_API_KEY=
+          GEMINI_API_KEY=
+          DB_URL=
+          SELENIUM_GRID_URL=
+          IMPLICIT_WAIT=10
+          EXPLICIT_WAIT=20
+          ALLURE_RESULTS_DIR=reports/allure-results
+          EOF
           echo '{"valid_user":{"email":"test@example.com","password":"Test@1234","role":"customer"}}' > data/json/users.json
 
       - name: Validate config
-        run: python -c "from config.config import config; config.validate(); print('Config OK')"
+        run: |
+          python -c "
+          from config.config import config
+          config.validate()
+          print('Config OK')
+          "
 
       - name: Validate data factory
         run: |
