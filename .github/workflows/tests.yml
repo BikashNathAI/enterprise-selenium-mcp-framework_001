@@ -21,7 +21,10 @@ jobs:
       - name: Install dependencies
         run: |
           pip install pytest requests faker python-dotenv PyYAML \
-            loguru jsonschema pydantic openpyxl pytest-html
+            loguru jsonschema pydantic openpyxl pytest-html \
+            selenium webdriver-manager anthropic mcp \
+            SQLAlchemy pymysql tenacity Pillow allure-pytest \
+            allure-python-commons pytest-bdd pytest-xdist
 
       - name: Setup environment
         run: |
@@ -84,7 +87,9 @@ jobs:
       - name: Install dependencies
         run: |
           pip install faker python-dotenv PyYAML loguru openpyxl \
-            pydantic anthropic tenacity
+            pydantic anthropic tenacity selenium webdriver-manager \
+            mcp SQLAlchemy pymysql requests allure-pytest \
+            allure-python-commons
 
       - name: Setup environment
         run: |
@@ -134,4 +139,11 @@ jobs:
           cases = p.generate_test_cases('login')
           assert len(cases) > 0
           print(f'MCP OK: {len(cases)} cases generated')
+          "
+
+      - name: Validate API client
+        run: |
+          python -c "
+          from api.api_client import APIClient
+          print('APIClient OK')
           "
