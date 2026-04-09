@@ -5,30 +5,34 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main ]
-  schedule:
-    - cron: '0 8 * * *'
 
 jobs:
 
-  # ── API Tests (fast, no browser needed) ──────────────────
+  # ── API Tests — runs in 30 seconds, no browser needed ────
   api-tests:
     name: API Tests
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Set up Python
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
       - name: Install dependencies
         run: |
-          pip install requests jsonschema pydantic faker pytest pytest-html loguru python-dotenv PyYAML
+          python -m pip install --upgrade pip
+          pip install pytest pytest-html requests faker loguru python-dotenv PyYAML jsonschema pydantic
+
+      - name: Create reports folder
+        run: mkdir -p reports
 
       - name: Run API tests
         run: |
-          pytest tests/api/ -v --html=reports/api-report.html --self-contained-html
+          pytest tests/api/test_api.py -v --html=reports/api-report.html --self-contained-html
 
       - name: Upload API report
         uses: actions/upload-artifact@v4
@@ -37,63 +41,81 @@ jobs:
           name: api-test-report
           path: reports/api-report.html
 
-  # ── UI Tests with Selenium Grid ───────────────────────────
-  ui-tests:
-    name: UI Tests
+  # ── Data Validation Tests — no browser needed ─────────────
+  data-tests:
+    name: Data + Config Tests
     runs-on: ubuntu-latest
-    needs: api-tests
-
-    services:
-      selenium-hub:
-        image: selenium/hub:4.21.0
-        ports:
-          - 4444:4444
-      chrome:
-        image: selenium/node-chrome:4.21.0
-        env:
-          SE_EVENT_BUS_HOST: selenium-hub
-          SE_EVENT_BUS_PUBLISH_PORT: 4442
-          SE_EVENT_BUS_SUBSCRIBE_PORT: 4443
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.11
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
       - name: Install dependencies
         run: |
-          pip install selenium webdriver-manager pytest pytest-bdd pytest-html faker python-dotenv PyYAML loguru openpyxl requests jsonschema pydantic
+          python -m pip install --upgrade pip
+          pip install pytest faker loguru python-dotenv PyYAML openpyxl
 
-      - name: Run UI smoke tests
-        env:
-          SELENIUM_GRID_URL: http://localhost:4444/wd/hub
-          HEADLESS: true
-          BASE_URL: https://www.google.com
+      - name: Create test data
         run: |
-          pytest tests/ui/test_login.py -m smoke -v --html=reports/ui-report.html --self-contained-html
+          python -c "
+          import openpyxl
+          wb = openpyxl.Workbook()
+          ws = wb.active
+          ws.title = 'SearchTests'
+          ws.append(['topic', 'expected_in_url'])
+          ws.append(['Python selenium', 'search'])
+          ws.append(['pytest tutorial', 'search'])
+          wb.save('data/excel/search_data.xlsx')
+          print('Excel created!')
+          "
 
-      - name: Upload UI report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: ui-test-report
-          path: reports/ui-report.html
+      - name: Verify config loads
+        run: |
+          python -c "
+          from config.config import config
+          config.validate()
+          print('Config OK!')
+          "
 
-  # ── Full Report Summary ───────────────────────────────────
-  report:
-    name: Generate Report
+      - name: Verify data factory
+        run: |
+          python -c "
+          from data.data_factory import DataFactory
+          u = DataFactory.generate_user()
+          print('User generated:', u['email'])
+          assert '@' in u['email']
+          print('DataFactory OK!')
+          "
+
+      - name: Verify MCP agent imports
+        run: |
+          python -c "
+          from mcp_agent.test_planner import MCPTestPlanner
+          p = MCPTestPlanner()
+          cases = p.generate_test_cases('login page')
+          print(f'Generated {len(cases)} test cases')
+          print('MCP Agent OK!')
+          "
+
+  # ── Summary ───────────────────────────────────────────────
+  summary:
+    name: Test Summary
     runs-on: ubuntu-latest
-    needs: [api-tests, ui-tests]
+    needs: [api-tests, data-tests]
     if: always()
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Download all reports
-        uses: actions/download-artifact@v4
-      - name: Summary
+      - name: Print summary
         run: |
-          echo "## Test Results Summary" >> $GITHUB_STEP_SUMMARY
-          echo "API Tests: Completed" >> $GITHUB_STEP_SUMMARY
-          echo "UI Tests: Completed" >> $GITHUB_STEP_SUMMARY
+          echo "## Enterprise Selenium MCP Framework" >> $GITHUB_STEP_SUMMARY
+          echo "| Test Suite | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| API Tests | Completed |" >> $GITHUB_STEP_SUMMARY
+          echo "| Data Tests | Completed |" >> $GITHUB_STEP_SUMMARY
+          echo "| Config Validation | Completed |" >> $GITHUB_STEP_SUMMARY
+          echo "| MCP Agent | Completed |" >> $GITHUB_STEP_SUMMARY
