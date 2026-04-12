@@ -1,0 +1,15 @@
+{
+  "sqlite": {
+    "url": "sqlite:///data/test_database.db",
+    "description": "Local SQLite — no installation needed"
+  },
+  "mysql": {
+    "url": "mysql+pymysql://user:password@localhost:3306/testdb",
+    "description": "MySQL — update credentials in .env"
+  },
+  "test_data": {
+    "default_role": "customer",
+    "default_active": 1,
+    "test_email_domain": "@testframework.com"
+  }
+}
